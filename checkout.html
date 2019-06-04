@@ -1,0 +1,115 @@
+<?php
+
+# DB AND PAGE FUNCTIONS:
+include("inc/common.php");
+
+# ALL PERSONALIZE/CART DATA IN SESSION
+session_start();
+
+$checkoutSteps = checkoutSteps();
+					  
+if(isset($_GET['step'])){
+	$step = $_GET['step'];
+	
+} else {
+	$step = $checkoutSteps[1];
+}
+
+foreach($checkoutSteps as $key => $val){
+	if($step == $val){
+		$stepKey = $key;
+		if(($key-1) > 0){
+			$previousStepKey = ($key-1);
+		}
+	}
+}
+
+// prevent advancing a step w/o adequate session data
+if(!isset($_GET['order'])){
+	// is mid checkout, not at the receipt page or the first page
+	if(isset($previousStepKey) && (!isset($_SESSION['checkout']) || !isset($_SESSION['checkout'][$checkoutSteps[$previousStepKey]]))){
+		header("Location: checkout_".$checkoutSteps[$previousStepKey].".html");
+		exit;
+
+	} else if(!isset($previousStepKey) && (!isset($_SESSION['personalize']) || count($_SESSION['personalize']) == 0)){
+		header("Location: checkout_timeout.html");
+		exit;
+	}
+}
+
+$breadCrumb = personalizeBreadCrumb($_SESSION['personalize']);
+
+?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Stiletto Tools</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<link href="style.css" rel="stylesheet" type="text/css">
+<link href="inc/styles.css" rel="stylesheet" type="text/css">
+<script language="JavaScript" src="inc/js_functions.js" type="text/javascript"></script>
+<script language="JavaScript" src="js/code.js" type="text/javascript"></script>
+<script src="AC_RunActiveContent.js" language="javascript"></script>
+<script src="swapper.js" language="javascript"></script>
+<script language="javascript">AC_FL_RunContent = 0;</script>
+<script src="AC_RunActiveContent.js" language="javascript"></script>
+<script language="JavaScript1.2" type="text/javascript" src="mm_css_menu.js"></script>
+<style type="text/css" media="screen">
+	@import url("./menu.css");
+.style1 {color: #000000}
+</style>
+</head>
+<body onLoad="MM_preloadImages('images/btn_home_ro.gif','images/btn_store_ro.gif','images/btn_crews_ro.gif','images/btn_whatsnew_ro.gif','images/btn_service_ro.gif','images/btn_distributors_ro.gif','images/btn_about_ro.gif')">
+<div id="container">
+	<div id="content" style="width:934px;">
+		<div id="inner_content">
+			<div id="header"><?php include("header.htm"); ?></div>
+			<div id="topnav"><?php include("topnav.htm"); ?></div>
+			<div id="inside_page">
+				<div id="inside_page_back">
+					<div id="inside_page_pad">
+						<p class="nospace">&nbsp;</p>
+	
+						<div class="breadcrumb"><?php if(isset($previousStep)) echo '<a href="personalize_'.$previousStep.'.html">Go Back</a> | '; ?>Step <?=$stepKey?> of 5</div>
+						<div class="personalization_header">
+							<div><?php echo $breadCrumb; ?></div>
+						</div>
+	
+						<div id="inside_page_pad_ext" style="width:796px; padding-right:0px !important;">
+							<div class="standardPage"><div style="padding:15px 0 65px 0;">
+								<table width="100%" cellspacing="0" cellpadding="0">
+									<tr>
+										<td class="checkoutSteps"><?php
+							
+											foreach($checkoutSteps as $key => $val){
+												if($step == $val) echo '<div class="active">'.varf($val).' &rsaquo;</div>';
+												else if($key > $stepKey) echo '<div class="inactive">'.varf($val).' &nbsp;</div>';
+												else echo '<a href="checkout_'.$val.'.html">'.varf($val).' &nbsp;</a>';
+											}
+											
+										?></td>
+										<td valign="top"><?php
+								
+											include("checkout/".$step.".php");
+											
+											if(SHOWDEVHTML){
+												echo '<pre>'; 
+												print_r($_SESSION); 
+												echo '</pre>';
+											}
+								
+										?></td>
+									</tr>
+								</table>
+							</div></div>
+						</div>
+					</div><!--end inside page pad-->
+				</div><!--end inside page back-->
+      			<div id="hm_content_bottom"><img src="images/hm_content_bottom.gif" width="914" height="3"></div>
+			</div><!--end inside page-->
+		</div><!--end inner content-->
+	</div><!--end content-->
+	<div id="footer"><?php include("footer.htm"); ?></div>
+</div><!--end container -->
+<?php include("imagemap.htm"); ?>
+</body>
+</html>

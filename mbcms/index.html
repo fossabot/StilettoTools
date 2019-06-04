@@ -1,0 +1,220 @@
+<?
+
+include('../inc/configuration.php');
+
+# MAKE SURE ALL NECESSARY PGS ARE IN SSL
+if(HASSSL){ // <- defined in inc/configuration.php
+	if( ereg("checkout",$_SERVER['PHP_SELF'])){
+		if(!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != "on"){
+			// ONLY USE THIS IF A www SITE AND non-www SITE EXIST
+			if(eregi("www.",$_SERVER['HTTP_HOST'])) $http_host = str_replace("www.","",$_SERVER['HTTP_HOST']);
+			else $http_host = $_SERVER['HTTP_HOST'];
+			$r_page = "https://".$http_host.$_SERVER['PHP_SELF'];
+			if($_SERVER['QUERY_STRING']) $r_page .= "?".$_SERVER['QUERY_STRING'];
+			header("Location: $r_page");
+		}
+	} else if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == "on" && !ereg("/actions/",$_SERVER['PHP_SELF'])){
+		$r_page = "http://".str_replace("www.","",$_SERVER['HTTP_HOST']).$_SERVER['PHP_SELF'];
+		if($_SERVER['QUERY_STRING']) $r_page .= "?".$_SERVER['QUERY_STRING'];
+		header("Location: $r_page");
+	} else {
+		if(eregi("www.",$_SERVER['HTTP_HOST'])){
+			$http_host = str_replace("www.","",$_SERVER['HTTP_HOST']);
+			$r_page = "http://".$http_host.$_SERVER['PHP_SELF'];
+			if($_SERVER['QUERY_STRING']) $r_page .= "?".$_SERVER['QUERY_STRING'];
+			header("Location: $r_page");
+		}
+	}
+}
+
+include('../inc/db_functions.php');
+include('inc/mbcms_functions.php');
+include('../inc/site_functions.php');
+require_once('config.php');
+if(!isset($_COOKIE['mbcms_level']) && strlen($_SERVER['QUERY_STRING']) > 0){
+	header("Location: index.html");
+	exit;	
+}
+
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>MB:CMS - Content Management System for <?=$_SERVER['HTTP_HOST']?></title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="SHORTCUT ICON" href="favicon.ico" />
+<link rel="stylesheet" href="rte.css" type="text/css">
+<link rel="stylesheet" href="inc/mbcms_styles.css" type="text/css">
+<script src="inc/mbcms_functions.js" language="JavaScript"></script>
+<script language="JavaScript" type="text/javascript" src="richtext.js"></script>
+<script language="JavaScript" type="text/javascript">
+<!--
+function submitForm() {
+	//to sync only 1 rte, use updateRTE(rte)
+	//to sync all rtes, use updateRTEs
+	updateRTEs('description');
+	return true;
+}
+//-->
+</script>
+<style type="text/css">
+td						{ font-family:Arial, Verdana, Helvetica; font-size:11px; color:#666; }
+.copyright				{ background:#FFF url("images/frm_copyright.gif"); font-size:10px; padding-right:10px; text-align:right; }
+.navBlank				{ background:#7A9AAF; border-bottom:1px solid #CCC; font-size:10px; }
+.navLink				{ text-align:center; color:#FFF; font-size:10px; border:1px solid #CCC; background:#ACC3D2; width:89px; }
+.navLink:hover			{ background:#66CC33; }
+.navLink_static			{ text-align:center; color:#B4C7D2; font-size:10px; border:1px solid #9AADB7; border-bottom:1px solid #CCC; background:#88A8BA; width:89px; }
+.mbToolsNavLink 		{ text-align:center; color:#FFF; border:1px solid #EEE; background:#CCC; padding-top:3px; padding-bottom:3px; }
+.mbToolsNavLink:hover	{ background:#66CC33; }
+.navLinkSel				{ text-align:center; color:#666; font-size:10px; border:1px solid #CCC; border-bottom:1px solid #FFF; background:#FFF; width:89px; }
+.navLinkSel:hover		{ background:#66CC33; }
+.stretcherL				{ background:#EEE url("images/frm_side_l_c.gif"); }
+.stretcherR				{ background:#EEE url("images/frm_side_r_c.gif"); }
+.mainContent			{ vertical-align:top; background:#FFF; }
+.headerTitle			{ background:#7A9AAF; font-weight:bold; color:#FFF; padding:5px; }
+.headerTitle_sm			{ background:#ACC3D2; font-size:10px; color:#FFF; padding-left:5px; }
+.headerTitle_smgrn		{ background:#66CC33; font-size:10px; color:#FFF; padding-left:5px; }
+.headerTitle_smg		{ background:#EEE; font-size:10px; color:#999; font-weight:bold; padding-left:5px; }
+a.staticWhite			{ color:#FFF; text-decoration:none; }
+a.staticWhite:hover		{ color:#FFF; text-decoration:none; }
+a.white					{ color:#FFF; text-decoration:none; }
+a.white:hover			{ color:#FFF; background:#66CC33; text-decoration:none; }
+a.linkButton			{ border:1px solid #CCC; background:#ACC3D2; color:#FFF; padding:2px; text-decoration:none; }
+a.linkButton:hover		{ border:1px solid #CCC; background:#66CC33; color:#FFF; text-decoration:none; }
+a.gray					{ color:#666; text-decoration:none; }
+a.gray:hover			{ color:#FFF; background:#66CC33; text-decoration:none; }
+a.navGray				{ color:#666; text-decoration:none; }
+a.navGray:hover			{ color:#FFF; text-decoration:none; }
+a.edit					{ color:#333; background:#EEE; text-decoration:none; padding:1px; }
+a.edit:hover			{ color:#FFF; background:#66CC33; text-decoration:none; }
+div.selectedLink		{ background:#FFD636; }
+</style>
+
+</head>
+<body bgcolor="#EEEEEE" topmargin="0" marginheight="0"<? if($page=='mb_whiteboard' && (isset($_GET['do']) && $_GET['do']=='edit') && ($_COOKIE['mbtoolsid'] == '4')) echo ' onload="showDetail(\'task_add\');"'; ?>>
+<a name="top" /></a>
+<table border="0" cellpadding="0" cellspacing="0" width="700" align="center">
+  <tr>
+   <td width="15"><img src="images/frm_side_l_a.gif" width="15" height="75" border="0" id="frm_side_l_a" alt="" /></td>
+   <td style="background:url('images/frm_bgheader_a.gif');"><a href="index.html"><img src="images/mb_header.jpg" width="670" height="75" border="0" id="mb_header" alt="" /></a></td>
+   <td width="15"><img src="images/frm_side_r_a.gif" width="15" height="75" border="0" id="frm_side_r_a" alt="" /></td>
+  </tr>
+  <tr>
+   <td><img src="images/frm_side_l_b.gif" width="15" height="10" border="0" id="frm_side_l_b" alt="" /></td>
+   <td style="background:url('images/index_r2_c2.gif');"><img src="images/spacer.gif" width="670" height="10" border="0" id="index_r2_c2" alt="" /></td>
+   <td><img src="images/frm_side_r_b.gif" width="15" height="10" border="0" id="frm_side_r_b" alt="" /></td>
+  </tr>
+  <tr>
+   <td class="stretcherL"><img src="images/spacer.gif" width="15" height="15" border="0" alt="" /></td>
+   <td class="mainContent">
+	<table width="100%" cellpadding="0" cellspacing="0"><tr><td valign="top">
+<?	
+	# START DYNAMIC CONTENT
+
+	if(!isset($_GET['pg'])){
+		if(!isset($_COOKIE['mbcms_level'])){
+			echo '<table border="0" cellpadding="0" cellspacing="0" width="100%">
+	        	  <tr><td class="tabs_a"><span class="headtxt">&raquo; please log in</span></td></tr>
+	        	  </table><p>&nbsp;<p>';
+			echo '<form method="POST" action="mbcms_login.php">
+				  <input type="hidden" name="do" value="signin">
+				  <center><table width="310" style="border:2px solid #eee;" cellspacing="5">';
+			
+			if($_GET['error']){
+				$err_msg = "Username and/or Password incorrect. Please check and try again, else contact the site administrator for assistance.";
+				echo '<tr><td colspan="2" style="background:#eee; color:#FF0000; padding:10px;">'.$err_msg.'</td></tr>';
+			} else {
+				$welcome_msg = "Welcome to the MB:CMS. Please login to gain pre-assigned administrative level access to ".$_SERVER['HTTP_HOST'].".";
+				echo '<tr><td colspan="2" style="background:#eee; padding:10px;">'.$welcome_msg.'</td></tr>';
+			}
+			
+			echo '<tr><td width="60"><b>Login:</b></td><td><input type="text" name="nameu" class="inputfield"></td></tr>
+					<tr><td><b>Password:</b></td><td><input type="password" name="pass" class="inputfield"></td></tr>
+					<tr><td>&nbsp;</td><td><input type="submit" value="Login"></td></tr>
+				  </table></center>
+				  </form>';
+			//print_r($_COOKIE);
+		} else {
+			echo '<table border="0" cellpadding="0" cellspacing="0" width="100%">
+	        	  <tr><td class="tabs_a" style="width:100%;"><span class="headtxt">&raquo; welcome back '.$_COOKIE['mbcms_name'].'</span></td></tr>
+	        	  </table>';
+			//echo "<p class=\"header\">&raquo; welcome back ".$_COOKIE['mbcms_name']."</p>";
+			include('modules/module_welcome.php');
+			
+		}
+		echo '&nbsp;<p>&nbsp;';
+		
+	} else {
+		$tabs = new tabs;
+		foreach ($tables as $k => $row){
+			foreach($row as $cell){
+				if ($cell == $_GET['pg']) $p = $k;
+			}
+		}
+		
+		if($_GET['pg'] == 'bb_messages') $tabpgs = 'view,index.html?pg='.$_GET['pg'].'&do=view|edit,';
+		else $tabpgs = 'view,index.html?pg='.$_GET['pg'].'&do=view|add,index.html?pg='.$_GET['pg'].'&do=add|edit,';
+		
+		$tabs->start($tabpgs,$_GET['do'], $_GET['do'].": ".strtolower($tables[$p]['name']));
+		
+		if($_GET['pg'] == 'mailer') $mbcmspage = "modules/module_mailer.php";
+		else if($_GET['pg'] == 'purchases') $mbcmspage = "modules/module_purchases.php";
+		else if($_GET['pg'] == 'category') $mbcmspage = "modules/module_3.php";
+		else if($_GET['pg'] == 'help') $mbcmspage = "modules/module_help.php";
+		else if($_GET['pg'] == 'inventory') $mbcmspage = "modules/module_inventory.php";
+		else if($_GET['pg'] == 'toon_submissions' && $_GET['do'] == 'edit') $mbcmspage = "modules/module_".$_GET['pg'].".php";
+		else if($tables[$p]['table'] == "bb_categories") $mbcmspage = "modules/module_4.php";	// FORUM CATEGORIES
+		else if(in_array('category', $tables[$p]['field']) || in_array('type', $tables[$p]['field']) ) $mbcmspage = "modules/module_2.php";
+		else $mbcmspage = "modules/module_1.php";
+		
+		/* WHAT MODULE?
+		echo $mbcmspage."<br>";
+		// END */
+		
+		$pg = $_GET['pg'];
+		if(isset($_GET['id'])) $id = $_GET['id'];
+		include($mbcmspage);
+		$tabs->end();
+	}
+	# END DYNAMIC CONTENT
+	
+	echo '</td><td width="145" valign="top" align="right">';
+	
+	if(isset($_COOKIE['mbcms_level'])){
+		# START NAVIGATION
+		$nav = new navigation;
+		$nav->start();
+		$nav->navlink('admin home', 'index.html', 'This is the MB:CMS homepage. An introductory to the CMS.');
+		for($i=0; $i<sizeof($tables); $i++){
+			$t_name = $tables[$i]['name'];
+			$t_table = $tables[$i]['table'];
+			$t_do = $tables[$i]['do'];
+			if(in_array($_COOKIE['mbcms_level'], $tables[$i]['access'])) $nav->navlink($t_name, "index.html?do=view&pg=$t_table", $t_do);
+		}
+		$nav->navlink('log out', 'mbcms_login.php?do=logout', 'Log out of MB:CMS and return to the login page.');
+		$nav->end();
+		# END NAVIGATION
+	} else {
+		echo '<img src="images/spacer.gif" width="145" height="31" style="background:#7b9aaf;">';
+	}
+	echo '</td></tr></table>';
+?>   
+   	<p style="padding-left:10px;"><a href="#top" class="linkButton">&nbsp;<b>&uarr;</b> top&nbsp;</a></p>
+</td>
+   <td class="stretcherR"><img src="images/spacer.gif" width="15" height="15" border="0" alt="" /></td>
+  </tr>
+  <tr>
+   <td><img src="images/frm_side_l_d.gif" width="15" height="23" border="0" id="frm_side_l_d" alt="" /></td>
+   <td class="copyright">&copy; Copyright <?=date('Y');?> <a href="http://www.montanab.com" target="_blank" class="gray">Montana Banana, Inc.</a> All Rights Reserved. | MB:CMS vs. 2.0</td>
+   <td><img src="images/frm_side_r_d.gif" width="15" height="23" border="0" id="frm_side_r_d" alt="" /></td>
+  </tr>
+  <tr>
+   <td><img src="images/frm_side_l_e.gif" width="15" height="10" border="0" id="frm_side_l_e" alt="" /></td>
+   <td style="background:url('images/frm_bottom.gif');"><img src="images/spacer.gif" width="670" height="10" border="0" id="frm_bottom" alt="" /></td>
+   <td><img src="images/frm_side_r_e.gif" width="15" height="10" border="0" id="frm_side_r_e" alt="" /></td>
+  </tr>
+</table>
+<div id="mbcms_site_logo"><a href="../" target="_blank"><img src="images/mbcms_site_logo.gif" border="0" alt="Click to launch website in new window" style="border:1px solid #666;"></a></div>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+Options FollowSymLinks
+
+DirectoryIndex index.html
+
+#For web servers using PHP as apache module:
+#AddType application/x-httpd-php .html .htm			
+
+#For web servers running PHP as CGI:
+AddHandler application/x-httpd-php .html .htm
+

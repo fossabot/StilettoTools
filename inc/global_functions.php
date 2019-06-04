@@ -1,0 +1,858 @@
+<?php
+/**
+ * inc/global_functions.php
+ * Site-wide PHP functions for use on ALL pages outside the MB:CMS
+ *
+ * Developer note: site specific functions should go in site_functions.php... no need to touch this file
+ *
+ * Code and Markup Copyright (c) Montana Banana
+ */
+
+# MAKE SURE ALL NECESSARY PGS ARE IN SSL
+if(HASSSL){ // <- defined in inc/configuration.php
+	if( ereg("checkout",$_SERVER['PHP_SELF'])){
+		if(!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] != "on"){
+			// ONLY USE THIS IF A www SITE AND non-www SITE EXIST
+			if(eregi("www.",$_SERVER['HTTP_HOST'])) $http_host = str_replace("www.","",$_SERVER['HTTP_HOST']);
+			else $http_host = $_SERVER['HTTP_HOST'];
+			$r_page = "https://".$http_host.$_SERVER['PHP_SELF'];
+			if($_SERVER['QUERY_STRING']) $r_page .= "?".$_SERVER['QUERY_STRING'];
+			header("Location: $r_page");
+		}
+	} else if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == "on" && !ereg("/actions/",$_SERVER['PHP_SELF'])){
+		$r_page = "http://".str_replace("www.","",$_SERVER['HTTP_HOST']).$_SERVER['PHP_SELF'];
+		if($_SERVER['QUERY_STRING']) $r_page .= "?".$_SERVER['QUERY_STRING'];
+		header("Location: $r_page");
+	} else {
+		if(eregi("www.",$_SERVER['HTTP_HOST'])){
+			$http_host = str_replace("www.","",$_SERVER['HTTP_HOST']);
+			$r_page = "http://".$http_host.$_SERVER['PHP_SELF'];
+			if($_SERVER['QUERY_STRING']) $r_page .= "?".$_SERVER['QUERY_STRING'];
+			header("Location: $r_page");
+		}
+	}
+}
+
+
+# FOR DEBUGGING ONLY
+# put this function anywhere you'd like to use ?mb=debug to see what the current session data is
+function print_session_vars(){
+	if(isset($_GET['mb']) && $_GET['mb'] == 'debug'){
+		echo '<pre>';
+		print_r($_SESSION);
+		echo '</pre>';
+	}
+}
+
+
+# GET BROWSER FOR BROWSER DETECTION
+function getBrowserInfo($size='short'){
+	if($size == 'short') return $_SERVER['HTTP_USER_AGENT'];
+	else return get_browser();
+}
+
+# DATE IN DB FORMAT
+$today = date('Y-m-d');
+global $today;
+
+# FORMAT TEXT FOR DISPLAY ON THE SITE... ALL TEXT GO TO THROUGH THIS, EVEN IF IT DOES NOTHING AT THE MOMENT
+# USAGE: f($qd['description']);
+function f($t){
+	$specialChars = array(	'(r)'	=> '&reg;',
+							'(R)'	=> '&reg;',
+							'(c)'	=> '&copy;',
+							'(C)'	=> '&copy;',
+							'(tm)'	=> '&trade;',
+							'(TM)'	=> '&trade;',
+							'(&gt;)'	=> '&rsaquo;',
+							'(&gt;&gt;)'	=> '&raquo;');
+	foreach($specialChars AS $key => $val) $t = str_replace($key,$val,stripslashes($t));
+	return $t;
+}
+
+
+# FORMATS REAL TEXT OUT OF VARIABLE
+function varf($v){
+	$t = str_replace("_"," ",$v);
+	$t = ucwords($t);
+	return $t;
+}
+
+
+# FORMAT TEXT FOR USAGE IN LINKS W/ APACHE MOD_REWRITE
+# USAGE: echo linkFormat('Product Name, With Special Chars');
+function linkFormat($text){
+	$formatted_text = str_replace("/","-",str_replace(" ","-",str_replace("'","",str_replace('"','',str_replace("&","and",stripslashes($text))))));
+	return urlencode($formatted_text);
+}
+
+# DOES TABLE EXIST
+function TableExists($tablename) {
+	// Get a list of tables contained within the database.
+	$result = mysql_list_tables(DBNAME);
+	$rcount = mysql_num_rows($result);
+
+	// Check each in list for a match.
+	for ($i=0;$i<$rcount;$i++) {
+		if (mysql_tablename($result, $i)==$tablename) return true;
+	}
+	return false;
+}
+
+# GET PAGE CONTENT FOR A SPECIFIC PAGE IN A SINGLE QUERY
+# USAGE: echo getContent('welcome');
+function getContent($pg,$returnType=0){
+	$q = mysql_query("SELECT `description` FROM `pagecontent` WHERE `page`='$pg'");
+	$qd = mysql_fetch_assoc($q);
+	if(mysql_num_rows($q) > 0){
+		if(trim($qd['description'])) $html = f($qd['description']);
+		else if(DEVMODE == 'debug') $html = "<span style=\"color:#FF0000;\"><b>PAGE CONTENT IS BLANK</b><br>See MB:CMS title ".$pg."</span>";
+	} else {
+		$html = "<span style=\"font-weight:bold; color:#FF0000; background:#FFF; padding:3px;\"> WARNING: No page content found for <i>$pg</i>! </span>";
+	}
+	if($returnType && $returnType == 'return') return str_replace("../uploads/","uploads/",$html);
+	else echo str_replace("../uploads/","uploads/",$html);
+}
+
+# IS USER LOGGED IN?
+# USAGE if(isLoggedIn()) // etc
+function isLoggedIn(){
+	if(isset($_COOKIE['user_id'])){
+		$q = mysql_query("SELECT `id` FROM `users` WHERE `id`='".$_COOKIE['user_id']."'");
+		if(mysql_num_rows($q) > 0) return true;
+		else return false;
+	} else {
+		return false;
+	}
+}
+
+# CREATE A RANDOM PASSWORD
+function randomPassword(){
+	$password = "";
+	$possible = "0123456789bcdfghjkmnpqrstvwxyz"; 
+	$i = 0; 
+	
+	while ($i < 8) { 
+		$char = substr($possible, mt_rand(0, strlen($possible)-1), 1);
+		if (!strstr($password, $char)) { 
+			$password .= $char;
+			$i++;
+		}
+	}
+	return $password;
+}
+
+# CREATE A RANDOM PASSWORD
+# note: checks 'users' table for existing 'username'
+function randomUsername(){
+	$username = "guest";
+	if(isset($_COOKIE['user_id'])){
+		$q = mysql_query("SELECT `id` FROM `users` WHERE `parent`='".$_COOKIE['user_id']."'");
+		$num = mysql_num_rows($q);
+	} else {
+		$num = 0;
+	}
+	
+	if($_COOKIE['user_id'] < 10) $prepend = "000".$_COOKIE['user_id'];
+	else if($_COOKIE['user_id'] < 100) $prepend = "00".$_COOKIE['user_id'];
+	else if($_COOKIE['user_id'] < 1000) $prepend = "0".$_COOKIE['user_id'];
+	else $prepend = $_COOKIE['user_id'];
+	
+	if($num < 10) $num = "0".$num;
+	
+	return $username.$prepend.$num;
+}
+
+# GET CATEGORY REAL NAME FROM ID
+# USAGE: getCategory($qd['speciality'],'title') RETURNS 'Title'
+function getCategory($id,$w){
+	$q = mysql_query("SELECT * FROM `category` WHERE `id`='$id'");
+	$qd = mysql_fetch_assoc($q);
+	return $qd[$w];
+}
+
+# FILENAME FORMAT
+# RETURNS A STRING IN FILE NAME FORMAT SANS ANY SPECIAL CHARS OR SPACES
+function filenameFormat($text){
+	$formattedText = strip_tags($text);
+	$formattedText = str_replace('¨','',$formattedText);
+	$formattedText = str_replace('ª','',$formattedText);
+	$formattedText = str_replace('%','pct',$formattedText);
+	$formattedText = str_replace(' ','_',$formattedText);
+	$formattedText = str_replace("'","",$formattedText);
+	$formattedText = str_replace('"','',$formattedText);
+	$formattedText = str_replace('&nbsp;','',$formattedText);
+	$formattedText = str_replace('&middot;','-',$formattedText);
+	$formattedText = str_replace('&trade;','',$formattedText);
+	$formattedText = str_replace('&','and',$formattedText);
+	return $formattedText;
+}
+
+# GET SINGLE FIELD FROM QUERY BASED ON TABLE NAME AND FIELD NAME, ID
+# USAGE: getField($id,'products', 'title') RETURNS 'Title'
+function getField($id, $table, $field){
+	$q = mysql_query("SELECT `$field` FROM `$table` WHERE `id`='$id'");
+	$qd = mysql_fetch_assoc($q);
+	return f($qd[$field]);
+}
+
+# GET SINGLE FIELD FROM QUERY BASED ON TABLE NAME AND FIELD NAME, ID
+# USAGE: getID('title of article','products', 'title') RETURNS [id]
+function getID($id, $table, $field){
+	$q = mysql_query("SELECT `id` FROM `$table` WHERE `$field`='$id'");
+	$qd = mysql_fetch_assoc($q);
+	return stripslashes($qd['id']);
+}
+
+# FORMAT PHONE NUMBER
+# USAGE echo formatphone($phone);
+function formatphone($phone) {
+	$phone = str_replace(".","",str_replace(")","",str_replace("(","",str_replace("-","",str_replace(" ","",$phone)))));
+	if (empty($phone)) return "";
+	if (strlen($phone) == 7){
+		sscanf($phone, "%3s%4s", $prefix, $exchange);
+	} else if (strlen($phone) == 10) {
+		sscanf($phone, "%3s%3s%4s", $area, $prefix, $exchange);
+	} else if (strlen($phone) > 10) {
+		sscanf($phone, "%3s%3s%4s%s", $area, $prefix, $exchange, $extension);
+	} else {
+		return "unknown phone format: $phone";
+	}
+	$out = "";
+	$out .= isset($area) ? '(' . $area . ') ' : "";
+	$out .= $prefix . '-' . $exchange;
+	$out .= isset($extension) ? ' x' . $extension : "";
+	return $out;
+}
+
+# FORMAT DATE FROM DATABASE (from 2004-01-01 to whatever format specified)
+# USAGE echo formatdate($db_date, 'Y-m-d');
+function formatdate($d,$t){
+	if(strlen($d) == 14){ // $d format is YYYYMMDDHHMMSS
+		$yyyy = substr($d,0,4);
+		$mm = substr($d,4,2);
+		$dd = substr($d,6,2);
+		$hr = substr($d,8,2);
+		$mn = substr($d,10,2);
+		$sec = substr($d,12,2);
+		
+		$date = date("$t", mktime($hr,$mn,$sec,$mm,$dd,$yyyy));
+	
+	} else { // $d format is YYYY-MM-DD
+		if(isset($d) && $d != ''){
+			list($yyyy, $mm, $dd) = explode('-',$d);
+			$date = date("$t", mktime(0,0,0,$mm,$dd,$yyyy));
+		}
+	}
+	
+	return $date;
+}
+
+
+# FORMAT DATE RANGE (each formatted like YYYY-MM-DD)
+# USAGE echo dateRange("2006-08-30", "2006-09-05");
+function dateRange($startDate, $endDate){
+	# displays either "Sept. 25th - 28th, 2006", "Sept. 30th - Oct. 5th, 2006" or simply "Sept. 25th, 2006"
+	if($startDate != '0000-00-00'){
+		$html = formatdate($startDate,'M. jS');
+		$m1 = explode('-',$startDate);
+		if($endDate != '0000-00-00'){
+			$m2 = explode('-',$endDate);
+			if($m1[1] == $m2[1]) $html .= ' - '.formatdate($endDate,'jS');
+			else $html .= ' - '.formatdate($endDate,'M. jS');
+			$html .= ', '.$m2[0];
+			
+		} else {
+			$html .= ', '.$m1[0];
+		}
+		
+		return $html;
+	}
+}
+
+
+# ALERT THIS: JAVASCRIPT POPUP MOSTLY FOR ERRORS
+# USAGE alertthis('Message','confirm');
+function alertthis($m,$t=0){
+	echo '<script language="JavaScript" type="text/javascript">
+		  function go_back(){
+		  	history.back();
+		  }
+		  var msg = "'.$m.'";
+		  alert(msg);
+		  go_back();
+	      </script>';
+}
+
+# BUILD AN IMAGE ROLLOVER LINK
+# USAGE button('imagename','link.html','Alt Text');
+function button($img,$lnk,$alt,$extra=0){
+	$internalVar = '';
+	if($lnk!='') $internalVar .= '<a href="'.$lnk.'" onMouseOut="MM_swapImgRestore();" onMouseOver="MM_swapImage(\''.$img.'\',\'\',\'images/buttons/'.$img.'_ro.gif\',1);">';
+	$internalVar .= '<img name="'.$img.'" src="images/buttons/'.$img.'_ini.gif" border="0"';
+	if($alt) $internalVar .= ' alt="'.stripslashes($alt).'"';
+	if($extra) $internalVar .= ' '.$extra;
+	$internalVar .= '>';
+	if($lnk!='') $internalVar .= '</a>';
+	return $internalVar;
+}
+
+# BUILD AN CSS TEXT BUTTON LINK
+# USAGE textbutton('link text','link.html','Alt Text', 'color1','color2', 'border');
+function textbutton($linkText,$linkURL){
+	$internalVar = '';
+	if($linkURL != '') $internalVar .= '<a href="'.$linkURL.'" class="HTML_button">&nbsp;';
+	$internalVar .= stripslashes($linkText);
+	if($linkURL != '') $internalVar .= '&nbsp;</a>';
+	return $internalVar;
+}
+
+# BUILD A POPUP LINK
+# USAGE popup('button/enlarge_ini.gif','popup.html','width=100,height=200','','Lnlarge image');
+function popup($img,$lnk,$params,$class,$alt=0){
+	$internalVar = '<a href="javascript:launchwin(\''.$lnk.'\',\'name\',\''.$params.'\');" class="plain">';
+	if($img == ''){
+		$internalVar .= stripslashes($alt);
+	} else {
+		$internalVar .= '<img src="'.$img.'" border="0"';
+		if($alt != 0) $internalVar .= ' alt="'.stripslashes($alt).'"';
+		if($class != '') $internalVar .= ' class="'.$class.'"';
+		$internalVar .= '>';
+	}
+	$internalVar .= '</a>';
+	return $internalVar;
+}
+
+
+##############################
+# MISC BUILD HTML FUNCTIONS
+
+# CREATE A JAVASCRIPT ERROR POPUP
+function javascriptErrorMsg($message){
+?>
+<script language="JavaScript" type="text/javascript">
+	function go_back(){
+		history.back();
+	}
+	var msg = "<?=$message;?>";
+	alert(msg);
+	go_back();
+</script>
+<?
+}
+
+# BUILD FLASH OBJECT AND EMBED TAG (defaults version 5)
+# NOTE: All flash files must reside in the flash/ directory to use this function
+# USAGE flash('file','width','height','color','.swf?params','6');
+function flash($file,$width,$height,$color,$params="",$version=6){
+	if(eregi('/',$file)) $location = ''; else $location = 'flash/';
+	$html = "<script language=\"javascript\">
+		if (AC_FL_RunContent == 0) {
+			alert(\"This page requires AC_RunActiveContent.js.\");
+		} else {
+			AC_FL_RunContent(
+				'codebase', 'http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=".$version.",0,0,0',
+				'width', '".$width."',
+				'height', '".$height."',
+				'src', '".$location.$file."',
+				'quality', 'high',
+				'pluginspage', 'http://www.macromedia.com/go/getflashplayer',
+				'align', 'middle',
+				'play', 'true',
+				'loop', 'true',
+				'scale', 'showall',
+				'devicefont', 'false',
+				'id', '".$name."',"
+				.($params != "" ? "'FlashVars', '$params',":"")
+				.($color=='transparent' ? "'wmode', 'transparent',":"'bgcolor', '".$color."',")."
+				'name', '".$name."',
+				'menu', 'false',
+				'allowFullScreen', 'false',
+				'allowScriptAccess','sameDomain',
+				'movie', '".$location.$file."',
+				'salign', ''
+				); //end AC code
+		}
+	</script>";
+	$html .= '<noscript>
+		<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version='.$version.',0,0,0" width="'.$width.'" height="'.$height.'" id="'.$name.'" align="middle">'.
+		'<param name="allowScriptAccess" value="sameDomain" />'.
+		'<param name="allowFullScreen" value="false" />'.
+		'<param name="menu" value="false" />'.
+		'<param name="movie" value="'.$location.''.$file.'.swf'.($params!="" ? '?'.$params:'').'" />'.
+		'<param name="quality" value="high" />';
+	if($color == 'transparent') $html .= '<param name="wmode" value="transparent">';
+	else $html .= '<param name="bgcolor" value="'.$color.'" />';
+	$html .='<embed src="'.$location.''.$file.'.swf'.($params!="" ? '?'.$params:'').'" menu="false" quality="high" '.($color=='transparent' ? 'wmode="transparent"':'bgcolor="'.$color.'"').' width="'.$width.'" height="'.$height.'" name="'.$name.'" align="middle" allowScriptAccess="sameDomain" allowFullScreen="false" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+		</object>
+	</noscript>';
+	
+	return $html;
+}
+
+# SHOW COPYRIGHT DATE
+# USE THIS TO SHOW THE COPYRIGHT DATE OR DATE RANGE
+function copyrightDate($startat=0){
+	$dateHTML = $startat;
+	if($startat && $startat < date('Y')) $dateHTML = $startat."-".date('Y');
+	else $dateHTML = date('Y');
+	echo $dateHTML;
+}
+
+
+function validate_email($str){
+	//returns 1 if valid email, 0 if not
+	if(ereg('^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$', $str)) return 1;
+	else return 0;
+}
+
+function validateCreditCard($cc_num){
+	$cc_num = trim(str_replace(" ","",str_replace("-","",$cc_num)));
+	$creditTypes = array(	"AMEX" 	=> "/^([34|37]{2})([0-9]{13})$/", 			//American Express
+							//"DCLUB" => "/^([30|36|38]{2})([0-9]{12})$/", 		//Diner's Club
+							"DISC" 	=> "/^([6011]{4})([0-9]{12})$/", 			//Discover Card
+							"MC" 	=> "/^([51|52|53|54|55]{2})([0-9]{14})$/", 	//Mastercard
+							"VISA" 	=> "/^([4]{1})([0-9]{12,15})$/" 			//Visa
+						);
+	
+	foreach($creditTypes as $key => $pattern){
+		if(preg_match($pattern,$cc_num)) {
+			return true;	
+		}
+	}
+		
+	return false;
+}
+
+# SEND MAIL FUNCTION
+function sendemail($to,$subject,$body,$femail,$fname) {
+    $headers = "From: ".str_replace(",","",str_replace("'","",str_replace('"','',$fname)))." <$femail>\n";
+    $headers.= "MIME-Version: 1.0\n";
+    $tbody = trim($body);
+    mail($to,stripslashes($subject),stripslashes($tbody),stripslashes($headers));
+}
+    
+# SEND HTML MAIL FUNCTION
+function sendHTMLemail($to,$subject,$body,$femail,$fname) {
+	$headers = "From: $fname <$femail>\n";
+	$headers .= "MIME-Version: 1.0\n";
+	$headers .= "Content-Type: text/html; charset=\"iso-8859-1\"\n";
+	$tbody = trim($body);
+	mail($to,stripslashes($subject),stripslashes($tbody),stripslashes($headers));
+}
+
+##############################
+# FORM ELEMENT CREATION FUNCTIONS
+
+# PRINT FORM
+# fields and required defined in inc/configuration for all forms
+# USAGE printForm(FIELDS,REQUIRED,$action,$values_array);
+function categories($type){
+	$values = array();
+	$q = mysql_query("SELECT * FROM `category` WHERE `type`='$type' ORDER BY `precedence` ASC");
+	while($qd = mysql_fetch_assoc($q)){
+		$values[$qd['id']] = f($qd['title']);
+	}
+	return $values;
+}
+
+function printForm($fields,$required,$action=0,$values_array=0,$class='formField'){
+	
+	if($action){
+		echo '<p><form action="'.$action.'" method="POST"';
+		if(eregi('file',$fields)) echo ' enctype="multipart/form-data"';
+		echo '>';
+	}
+	if(isset($_COOKIE['user_id']) && $_COOKIE['user_id'] != 0) echo '<input type="hidden" name="user_id" value="'.$_COOKIE['user_id'].'">';
+	echo '<table align="center">';
+
+	$fields = explode(",",$fields);
+	$required = explode(",",$required);
+	
+	# THESE VALUES SHOULD BE DEFINED IN site_functions.php ON A PER-SITE BASIS
+	$textareas = formFields('textareas');
+	$checkboxes = formFields('checkboxes');
+	$categories = formFields('categories');
+	
+	foreach($fields AS $key => $val){
+		if(isset($values_array[$val])) $value = $values_array[$val];
+		else $value = '';
+		
+		echo '<tr>';
+		
+		if(in_array($val,$checkboxes)){
+			echo '	<td style="padding:15px;" colspan="2">';
+		} else {
+			echo '	<td class="formField_label">';
+			if(in_array($val,$required)){
+				$hasRequired = true;
+				echo '*';
+			}
+			if($val == 'feed1') echo 'RSS Feed 1';
+			else if($val == 'feed2') echo 'RSS Feed 2';
+			else echo ucwords(str_replace("_"," ",$val));
+			echo ':</td><td align="left">';
+		}
+		
+		if(in_array($val,$textareas)) echo '<textarea  name="'.str_replace("?","",$val).'" class="'.$class.'_textarea">'.$value.'</textarea>';
+		else if(in_array($val,$checkboxes)) echo '<input type="checkbox" name="'.str_replace("?","",$val).'" value="true"> ';
+		else if(in_array($val,$categories)) echo selectBox($val,$value,$class.'_selectbox',categories($val));
+		else if($val == 'state') echo selectBox($val,$value,$class.'_selectbox',selectStates());
+		else if($val == 'country') echo selectBox($val,($value=='' ? 'us':$value),$class.'_selectbox',selectCountries());
+		else if($val == 'month') echo selectBox($val,$value,$class.'_short',selectMonth());
+		else if($val == 'year') echo selectBox($val,$value,$class.'_short',selectYear());
+		else if($val == 'password' || $val == 'confirm') echo '<input type="password" name="'.str_replace("?","",$val).'" value="" class="'.$class.'_textfield">';
+		else if($val == 'file') echo '<input type="file" name="'.str_replace("?","",$val).'" value="'.$value.'" class="'.$class.'_textfield">';
+		else echo '<input type="text" name="'.str_replace("?","",$val).'" value="'.$value.'" class="'.$class.'_textfield">';
+		echo '</td>
+			</tr>';
+	}
+	
+	if($hasRequired || $action){
+		echo '	<tr>
+					<td>&nbsp;</td>
+					<td>';
+		if($hasRequired) echo '<small>* Required Fields</small><p>';
+		if($action) echo '<input type="submit" value="Submit">';
+		echo '		</td>
+				</tr>';
+	}
+	echo '</table>';
+	if($action) echo '</form>';
+}
+
+
+# GLOBAL SELECT BOX FUNCTION
+function selectBox($name,$sel,$class=0,$valuesArray=0, $select_one=0, $onchange=0){
+	$html = '<select id="'.$name.'" name="'.$name.'"';
+	if($class) $html .= ' class="'.$class.'"';
+	if($onchange) $html .= ' onChange="'.$onchange.'"';
+	$html .= '>';
+	if(!$select_one) $select_one = 'Select One';
+	if($select_one && !is_int($select_one)) $html .= '<option value="" style="color:#999">'.$select_one.'</option>';
+	foreach($valuesArray AS $key => $val){
+		$html .= '<option value="'.$key.'"';
+		if(strtoupper($key) == strtoupper($sel) || $key == $sel) $html .= ' selected'; 
+		$html .= '> '.$val.'</option>';
+	}	
+	$html .= '</select>';
+	return $html;
+}
+
+function selectMonth(){
+	$valuesArray = array();
+	for($i=1; $i<13; $i++){
+		$value = date("m", mktime(0, 0, 0, $i, 01, date("Y")));
+		$lable = date("F", mktime(0, 0, 0, $i, 01, date("Y")));
+		$valuesArray[$value] = $lable;
+	}
+	return $valuesArray;
+}
+
+function selectYear(){
+	$valuesArray = array();
+	for($i=0; $i<7; $i++){
+		$value = date("Y", mktime(0, 0, 0, 01, 01, date("Y")+$i));
+		$lable = date("Y", mktime(0, 0, 0, 01, 01, date("Y")+$i));
+		$valuesArray[$value] = $lable;
+	}
+	return $valuesArray;
+}
+
+# STATE/PROV
+function selectStates(){
+	$valuesArray = array(	"AL"=>"Alabama",
+	"AK" => "Alaska",
+	"AZ" => "Arizona",
+	"AR" => "Arkansas",
+	"CA" => "California",
+	"CO" => "Colorado",
+	"CT" => "Connecticut",
+	"DC" => "Washington DC",
+	"DE" => "Delaware",
+	"FL" => "Florida",
+	"GA" => "Georgia",
+	"HI" => "Hawaii",
+	"ID" => "Idaho",
+	"IL" => "Illinois",
+	"IN" => "Indiana",
+	"IA" => "Iowa",
+	"KS" => "Kansas",
+	"KY" => "Kentucky",
+	"LA" => "Louisiana",
+	"ME" => "Maine",
+	"MD" => "Maryland",
+	"MA" => "Massachusetts",
+	"MI" => "Michigan",
+	"MN" => "Minnesota",
+	"MS" => "Mississippi",
+	"MO" => "Missouri",
+	"MT" => "Montana",
+	"NE" => "Nebraska",
+	"NV" => "Nevada",
+	"NH" => "New Hampshire",
+	"NJ" => "New Jersey",
+	"NM" => "New Mexico",
+	"NY" => "New York",
+	"NC" => "North Carolina",
+	"ND" => "North Dakota",
+	"OH" => "Ohio",
+	"OK" => "Oklahoma",
+	"OR" => "Oregon",
+	"PA" => "Pennsylvania",
+	"PR" => "Puerto Rico",
+	"RI" => "Rhode Island",
+	"SC" => "South Carolina",
+	"SD" => "South Dakota",
+	"TN" => "Tennessee",
+	"TX" => "Texas",
+	"UT" => "Utah",
+	"VT" => "Vermont",
+	"VA" => "Virginia",
+	"WA" => "Washington",
+	"WV" => "West Virginia",
+	"WI" => "Wisconsin",
+	"WY" => "Wyoming",
+	"AB" => "Alberta",
+	"BC" => "British Columbia",
+	"MB" => "Manitoba",
+	"NB" => "New Brunswick",
+	"NF" => "Newfoundland",
+	"NS" => "Nova Scotia",
+	"NT" => "Northwest Territories",
+	"NU" => "Nunavit",
+	"ON" => "Ontario",
+	"PE" => "Prince Edward Island",
+	"QC" => "Quebec",
+	"SK" => "Saskatchewan",
+	"YT" => "Yukon" );
+	
+	return $valuesArray;
+}
+
+# COUNTRIES
+function selectCountries(){
+	$valuesArray = array( "us" => "United States",
+	"al" => "Albania",
+	"dz" => "Algeria",
+	"as" => "American Samoa",
+	"ao" => "Angola",
+	"ai" => "Anguilla",
+	"ag" => "Antigua",
+	"ar" => "Argentina",
+	"am" => "Armenia",
+	"aw" => "Aruba",
+	"au" => "Australia",
+	"at" => "Austria",
+	"az" => "Azerbaijan",
+	"bs" => "Bahamas",
+	"bh" => "Bahrain",
+	"bd" => "Bangladesh",
+	"bb" => "Barbados",
+	"by" => "Belarus",
+	"be" => "Belgium",
+	"bz" => "Belize",
+	"bj" => "Benin",
+	"bm" => "Bermuda",
+	"bt" => "Bhutan",
+	"bo" => "Bolivia",
+	"bl" => "Bonaire",
+	"ba" => "Bosnia Herzegovina",
+	"bw" => "Botswana",
+	"br" => "Brazil",
+	"vg" => "British Virgin Islands",
+	"bn" => "Brunei",
+	"bg" => "Bulgaria",
+	"bf" => "Burkina Faso",
+	"bi" => "Burundi",
+	"kh" => "Cambodia",
+	"cm" => "Cameroon",
+	"ca" => "Canada",
+	"cv" => "Cape Verde",
+	"ky" => "Cayman Islands",
+	"td" => "Chad",
+	"cl" => "Chile",
+	"cn" => "China",
+	"co" => "Colombia",
+	"cg" => "Congo",
+	"ck" => "Cook Islands",
+	"cr" => "Costa Rica",
+	"hr" => "Croatia",
+	"cb" => "Curacao",
+	"cy" => "Cyprus",
+	"cz" => "Czech Republic",
+	"dk" => "Denmark",
+	"dj" => "Djibouti",
+	"dm" => "Dominica",
+	"do" => "Dominican Republic",
+	"ec" => "Ecuador",
+	"eg" => "Egypt",
+	"sv" => "El Salvador",
+	"ee" => "Estonia",
+	"et" => "Ethiopia",
+	"fj" => "Fiji",
+	"fi" => "Finland",
+	"fr" => "France",
+	"gf" => "French Guiana",
+	"pf" => "French Polynesia",
+	"ga" => "Gabon",
+	"gm" => "Gambia",
+	"ge" => "Georgia",
+	"de" => "Germany",
+	"gh" => "Ghana",
+	"gi" => "Gibraltar",
+	"gr" => "Greece",
+	"gd" => "Grenada",
+	"gp" => "Guadeloupe",
+	"gu" => "Guam",
+	"gt" => "Guatemala",
+	"gn" => "Guinea",
+	"gw" => "Guinea Bissau",
+	"gy" => "Guyana",
+	"ht" => "Haiti",
+	"hn" => "Honduras",
+	"hk" => "Hong Kong",
+	"hu" => "Hungary",
+	"is" => "Iceland",
+	"in" => "India",
+	"id" => "Indonesia",
+	"ie" => "Ireland (Republic of)",
+	"il" => "Israel",
+	"it" => "Italy",
+	"ci" => "Ivory Coast",
+	"jm" => "Jamaica",
+	"jp" => "Japan",
+	"jo" => "Jordan",
+	"kz" => "Kazakhstan",
+	"ke" => "Kenya",
+	"ki" => "Kiribati",
+	"xk" => "Kosovo",
+	"xe" => "Kosrae Island",
+	"kw" => "Kuwait",
+	"kg" => "Kyrgyzstan",
+	"la" => "Laos",
+	"lv" => "Latvia",
+	"lb" => "Lebanon",
+	"ls" => "Lesotho",
+	"lt" => "Lithuania",
+	"lu" => "Luxembourg",
+	"mk" => "Macedonia",
+	"mg" => "Madagascar",
+	"mw" => "Malawi",
+	"my" => "Malaysia",
+	"mv" => "Maldives",
+	"ml" => "Mali",
+	"mt" => "Malta",
+	"mh" => "Marshall Islands",
+	"mq" => "Martinique",
+	"mr" => "Mauritania",
+	"mu" => "Mauritius",
+	"mx" => "Mexico",
+	"md" => "Moldova",	
+	"mn" => "Mongolia",
+	"ms" => "Montserrat",
+	"ma" => "Morocco",
+	"mz" => "Mozambique",
+	"np" => "Nepal",
+	"nl" => "Netherlands",
+	"nc" => "New Caledonia",
+	"nz" => "New Zealand",
+	"ni" => "Nicaragua",
+	"ne" => "Niger",
+	"ng" => "Nigeria",
+	"mp" => "Northern Mariana Islands",
+	"no" => "Norway",
+	"om" => "Oman",
+	"pk" => "Pakistan",
+	"pw" => "Palau",
+	"pa" => "Panama",
+	"pg" => "Papua New Guinea",
+	"py" => "Paraguay",
+	"pe" => "Peru",
+	"ph" => "Philippines",
+	"pl" => "Poland",
+	"xp" => "Ponape",
+	"pt" => "Portugal",
+	"pr" => "Puerto Rico",
+	"qa" => "Qatar",
+	"re" => "Reunion",
+	"ro" => "Romania",
+	"xc" => "Rota",
+	"ru" => "Russia",
+	"rw" => "Rwanda",
+	"xs" => "Saipan",
+	"sa" => "Saudi Arabia",
+	"sn" => "Senegal",
+	"cs" => "Serbia and Montenegro",
+	"sc" => "Seychelles",
+	"sg" => "Singapore",
+	"sk" => "Slovakia",
+	"si" => "Slovenia",
+	"sb" => "Solomon Islands",
+	"za" => "South Africa",
+	"kr" => "South Korea",
+	"es" => "Spain",
+	"lk" => "Sri Lanka",
+	"nt" => "St. Barthelemy",
+	"vi" => "St. Croix",
+	"eu" => "St. Eustatius",
+	"vi" => "St. John",
+	"kn" => "St. Kitts and Nevis",
+	"lc" => "St. Lucia",
+	"mb" => "St. Maarten",
+	"vi" => "St. Thomas",
+	"vc" => "St. Vincent and the Grenadines",
+	"sr" => "Suriname",
+	"sz" => "Swaziland",
+	"se" => "Sweden",
+	"ch" => "Switzerland",
+	"sy" => "Syria",
+	"tj" => "Tadjikistan",
+	"tw" => "Taiwan",
+	"tz" => "Tanzania",
+	"th" => "Thailand",
+	"xn" => "Tinian",
+	"tg" => "Togo",
+	"to" => "Tonga",
+	"vg" => "Tortola",
+	"tt" => "Trinidad and Tobago",
+	"xa" => "Truk",
+	"tn" => "Tunisia",
+	"tr" => "Turkey",
+	"tm" => "Turkmenistan",
+	"tc" => "Turks and Caicos",
+	"tv" => "Tuvalu",
+	"ug" => "Uganda",
+	"ua" => "Ukraine",
+	"vc" => "Union Island",
+	"ae" => "United Arab Emirates",
+	"gb" => "United Kingdom",
+	"us" => "United States",
+	"uy" => "Uruguay",
+	"vi" => "US Virgin Islands",
+	"uz" => "Uzbekistan",
+	"vu" => "Vanuatu",
+	"ve" => "Venezuela",
+	"vn" => "Vietnam",
+	"vg" => "Virgin Gorda",
+	"wf" => "Wallis and Futuna",
+	"ws" => "Western Samoa",
+	"xy" => "Yap",
+	"ye" => "Yemen",
+	"zm" => "Zambia",
+	"zw" => "Zimbabwe" );
+	
+	return $valuesArray;
+}
+
+# JUST FOR TESTING, PRINT DUMMY TEXT
+$lipsum = 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Vivamus at libero sed quam posuere consequat. 
+Maecenas scelerisque, tortor non tristique condimentum, ligula enim pretium leo, et auctor lorem ligula vitae urna. 
+Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Curabitur eu neque. 
+Aenean tortor erat, fermentum in, scelerisque non, scelerisque et, ligula. Ut luctus tellus a sapien. Etiam varius 
+nunc ut est. Sed volutpat ornare ligula. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per 
+inceptos hymenaeos... <a href="index.html">More</a>';
+global $lipsum;
+
+// eof
+?>

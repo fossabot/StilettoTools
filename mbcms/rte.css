@@ -1,0 +1,41 @@
+.rteImage {
+    background: none;
+	border: none;
+	padding:1px;
+	cursor: pointer;
+	cursor: hand;
+}
+
+.rteImageRaised, .rteImage:hover {
+    background: #e8ecf3;
+	border: 1px solid #819dce;
+	cursor: pointer;
+	cursor: hand;
+	padding:0px;
+}
+
+.rteImageLowered, .rteImage:active {
+	border: 1px inset;
+	cursor: pointer;
+	cursor: hand;
+	padding:0px;
+}
+
+.rteVertSep {
+	margin: 0 4px 0 4px;
+}
+
+.rteBack {
+	background: #fff url("images/rte_background.gif");
+	letter-spacing: 0;
+	padding: 2px;
+}
+
+.rteBack tbody tr td, .rteBack tr td {
+	padding: 0;
+}
+
+.rteDiv {
+	display: block;
+	position: relative;
+}

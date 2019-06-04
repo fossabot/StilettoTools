@@ -1,0 +1,9 @@
+Options FollowSymLinks
+
+DirectoryIndex personalization.html
+
+RewriteEngine on
+RewriteBase /
+
+RewriteRule ^personalize_(.*).html		personalization.html?step=$1	[QSA]
+RewriteRule ^checkout_(.*).html			checkout.html?step=$1			[QSA]

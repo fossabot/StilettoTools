@@ -1,0 +1,78 @@
+/* override style.css attribues */
+#inside_page_pad_ext 				{ padding-left:0px !important; }
+#inner_content 						{ width:914px; }
+
+h2									{ font-size:16px !important; color:#fff; }
+
+.testRedBorder						{ border:1px solid #f00; }
+.hidden								{ visibility:hidden; height:0px; overflow:hidden; }
+
+img									{ border:0px; }
+.productDetail a:hover				{ color:#0066CC; text-decoration:underline; }
+.productDetail a:hover				{ color:#FAB718; }
+.standardPage						{ color:#fff; font-family: Geneva, Arial, Helvetica, sans-serif; font-size: 12px; line-height:18px; width:796px; }
+.standardPage td					{ color:#fff; font-family: Geneva, Arial, Helvetica, sans-serif; font-size: 12px; line-height:18px; }
+
+div.continueButton					{ margin-top:15px; text-align:right; }
+
+td.productList						{ width:281px; vertical-align:top; padding-top:5px; }
+
+ul.productList						{ margin:0px; padding:0px; width:281px; }
+ul.productList li					{ margin:0px; padding:0px; list-style:none; }
+ul.productList li a					{ display:block; font-size:14px; font-weight:bold; background:#2A2A29; color:#fff; margin:0 1px 2px 0; text-decoration:none; padding:5px 0 5px 12px; }
+ul.productList li a:hover			{ color:#FAB718; text-decoration:none; }
+ul.productList li a.sel				{ background:#CCCDC9; color:#090909; margin:0 0 2px 0; text-decoration:none; }
+ul.productList li a.sel:hover		{ color:#090909; text-decoration:none; }
+
+td.productDetail					{ text-align:left; vertical-align:top; width:515px; }
+div.productDetail					{ color:#000; background:#CCCDC9; font-size:12px; width:515px; min-height:255px; }
+div.productDetail a					{ color:#06c; text-decoration:underline; }
+div.productDetail a:hover			{ color:#69b; }
+div.productDetail td				{ font-size: 12px; line-height:18px; color:#000; }
+div.productDetail td.productImage	{ vertical-align:top; padding-right:12px; font-size:11px; }
+div.productDetail td.productImage a	{ display:block; padding-top:5px; color:#000; text-decoration:none; }
+div.productDetail td.productImage a:hover	{ color:#06c; text-decoration:underline; }
+div.productDetail small				{ display:block; padding:8px 0 2px 0; color:#666; font-size:10px;  }
+div.productDetail .productOptions td{ font-size:11px; vertical-align:middle !important; padding:2px 0 2px 0; }
+div.productDetail .productOptions tr:hover	{ background:#D9DAD7; cursor:pointer; }
+
+td.productDescription				{ font-size:12px; color:#000; font-family: Geneva, Arial, Helvetica, sans-serif; font-size: 12px; line-height:18px; }
+td.productDescription ul			{ margin:5px 0 5px 0; padding:0 0 0 16px; }
+td.productDescription li			{ font-size:12px; color:#000; font-family: Geneva, Arial, Helvetica, sans-serif; font-size: 11px; line-height:18px; }
+
+td.locationExamples					{ text-align:left; vertical-align:top; }
+div.locationExamples				{ color:#000; background:#CCCDC9; padding:10px 0 10px 10px; width:505px; font-size:12px; }
+div.locationExamples img			{ border:2px solid #cccdc9; width:223px; height:168px; }
+
+div.breadcrumb						{ font-family:Arial,Verdana,Helvetica,sans-serif; text-align:right; font-size:11px; font-weight:bold; color:#fff; margin:3px 10px 5px 0; }
+div.breadcrumb a					{ color:#fff; text-decoration:none; }
+div.breadcrumb a:hover				{ color:#fff; text-decoration:underline; }
+div.personalization_header			{ background:url("../images/personalization_header.png") top left no-repeat; height:30px; }
+div.personalization_header div		{ font-family:Arial,Verdana,Helvetica,sans-serif; padding:9px 0 0 265px; color:#fff; font-size:12px; }
+div.personalization_header div a		{ color:#fff; text-decoration:underline; font-weight:bold; }
+div.personalization_header div a:hover	{ color:#fc3; text-decoration:underline; font-weight:bold; }
+
+td.checkoutSteps					{ width:175px; font-family:Arial,Verdana,Helvetica,sans-serif; text-align:right; font-size:13px; color:#fff; vertical-align:top; padding-right:25px; }
+td.checkoutSteps div.inactive		{ display:block; font-size:13px; color:#666; text-decoration:none; font-weight:bold; margin-bottom:10px; }
+td.checkoutSteps div.active			{ display:block; font-size:13px; color:#fc3; text-decoration:none; font-weight:bold; margin-bottom:10px; }
+td.checkoutSteps a					{ display:block; font-size:13px; color:#fff; text-decoration:none; font-weight:bold; margin-bottom:10px; }
+td.checkoutSteps a:hover			{ color:#fff; text-decoration:underline; }
+
+img.introPic						{ border:3px solid #fff; margin-bottom: 4px; }
+div.caption							{ font-family:Arial,Verdana,Helvetica,sans-serif; font-size:11px; padding:15px 0 3px 0; font-size:13px; font-weight:bold; }
+
+td.formLabel						{ font-family:Arial,Verdana,Helvetica,sans-serif; text-align:right; font-size:13px; color:#fff; font-weight:bold; padding-right:12px; vertical-align:top; padding-top:3px; width:130px; }
+td.formField						{ vertical-align:top; padding-bottom:2px; }
+td.formField input, td.formField select, td.formField textarea					
+	{ background:#fff; border:2px solid #fff; color:#000; font-family:Arial,Verdana,Helvetica,sans-serif; font-size:12px; width:220px; }
+td.formField textarea { height:200px; }
+.formField .submitButton			{  }
+.shortFormElement					{ width:80px !important; }
+
+div.gallery							{ background:#CCCDC9; padding:10px 0 10px 10px; }
+div.gallery td						{ padding:5px 5px 5px 5px; }
+div.gallery td img					{ border:2px solid #fff; margin:5px 5px 5px 5px; }
+
+div.printToolNote					{ margin-top:35px; }
+div.printPage						{ font-family:Arial,Verdana,Helvetica,sans-serif; color:#000 !important; text-align:left; padding:25px; }
+div.printPage td, div.printPage div, div.printPage p	{ font-family:Arial,Verdana,Helvetica,sans-serif; font-size:14px; color:#000 !important; }
